@@ -1,17 +1,17 @@
 {
-  "name": "-template-",
+  "name": "html2react-parser",
   "version": "1.0.0",
-  "description": "",
+  "description": "Transmute HTML markup into React components",
   "author": "Krombik",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Krombik/-template-.git"
+    "url": "git+https://github.com/Krombik/html2react-parser.git"
   },
   "bugs": {
-    "url": "https://github.com/Krombik/-template-/issues"
+    "url": "https://github.com/Krombik/html2react-parser/issues"
   },
-  "homepage": "https://github.com/Krombik/-template-#readme",
+  "homepage": "https://github.com/Krombik/html2react-parser#readme",
   "type": "module",
   "source": "src/index.ts",
   "engines": {
@@ -20,13 +20,39 @@
   "scripts": {
     "build": "ts-node ./scripts/build.mts"
   },
+  "peerDependencies": {
+    "@types/react": ">=16.8.0",
+    "react": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "lodash.identity": "^3.0.0"
+  },
   "devDependencies": {
+    "@types/lodash.identity": "^3.0.7",
     "@types/node": "^20.5.4",
+    "@types/react": "^18.2.21",
     "prettier": "^3.0.2",
+    "ts-node": "^10.9.1",
     "tsup": "^7.2.0",
     "typescript": "^5.1.6"
   },
   "keywords": [
+    "html",
+    "react",
+    "parser",
+    "conversion",
+    "component",
+    "jsx",
+    "html-to-react",
+    "html-parser",
+    "react-components",
+    "markup",
+    "string-to-react"
   ],
   "sideEffects": false
 }

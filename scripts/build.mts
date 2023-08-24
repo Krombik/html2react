@@ -18,6 +18,7 @@ const run = async (outDir: string) => {
         declaration: true,
         stripInternal: true,
         strictNullChecks: true,
+        jsx: ts.JsxEmit.React,
         outDir,
       })
       .emit().emitSkipped
@@ -40,7 +41,7 @@ const run = async (outDir: string) => {
   await build({
     outDir,
     minify: false,
-    entry: ['src/index.ts', `src/!(utils|types)/**/*.ts`],
+    entry: ['src/index.ts', `src/!(utils|types)/**/*.(ts|tsx)`],
     splitting: true,
     sourcemap: true,
     clean: false,

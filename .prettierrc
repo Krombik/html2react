@@ -1,5 +1,4 @@
 {
-  "parser": "babel-ts",
   "singleQuote": true,
   "jsxSingleQuote": true,
   "tabWidth": 2,
