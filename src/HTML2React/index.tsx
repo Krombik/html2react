@@ -11,14 +11,14 @@ import identity from 'lodash.identity';
 export type HTML2ReactProps = {
   /** The HTML content to be converted to React components. */
   html: string;
-  /** Map HTML tags to React components. */
+  /** Custom tag components to replace HTML tags. If a component is not provided, the corresponding HTML tag will be used. */
   components?: Partial<
     Record<keyof JSX.IntrinsicElements, ComponentType<Record<string, any>>>
   > &
     Record<string, ComponentType<Record<string, any>>>;
-  /** Map HTML attributes to React props. */
+  /** Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is. */
   attributes?: Partial<HTMLAttributes2ReactProps> & Record<string, string>;
-  /** Converters for transforming HTML attributes. */
+  /** Converters for processing attribute values. If no converter is provided, the property will be of type string. */
   converters?: Converters;
   /**
    * Process text segments within the HTML content.
