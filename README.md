@@ -1,6 +1,6 @@
 # html2react-parser
 
-Lightweight library that allows you to convert HTML strings into React components while providing flexibility in handling tags, attributes, and text segments.
+Lightweight library that allows you to convert HTML markup to React components on the client and server side, while providing flexibility in handling tags, attributes, and text segments.
 
 ## Installation
 
@@ -36,7 +36,10 @@ Component to convert HTML string into React components
 ```ts
 type HTML2ReactProps = {
   html: string;
-  components?: Record<string, ComponentType<Record<string, any>>>;
+  components?: Record<
+    string,
+    ComponentType<Record<string, any>> | keyof JSX.IntrinsicElements
+  >;
   attributes?: Record<string, string>;
   converters?: Record<string, (value: string) => any>;
   processTextSegment?(segment: string): string;
@@ -60,7 +63,11 @@ import HTML2React from 'html2react-parser/HTML2React';
 
 <HTML2React
   html='<div><h1>Title</h1><br><p>Paragraph</p><br /><button data-attribute="any" tabindex="1">Button</button>text</div>'
-  components={{ h1: ({ children }) => <h3>{children}</h3>, script: () => null }}
+  components={{
+    h1: ({ children }) => <h3>{children}</h3>,
+    p: 'div',
+    script: () => null,
+  }}
   attributes={{ tabindex: 'tabIndex' }}
   converters={{ tabIndex: (value) => +value }}
 />;

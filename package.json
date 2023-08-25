@@ -1,7 +1,7 @@
 {
   "name": "html2react-parser",
   "version": "1.0.0",
-  "description": "Transmute HTML markup into React components",
+  "description": "Converting HTML markup to React components on the client and server side.",
   "author": "Krombik",
   "license": "MIT",
   "repository": {
