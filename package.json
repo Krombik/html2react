@@ -1,17 +1,17 @@
 {
-  "name": "html2react-parser",
+  "name": "react-html-string-parser",
   "version": "1.0.0",
   "description": "Converting HTML markup to React components on the client and server side.",
   "author": "Krombik",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Krombik/html2react-parser.git"
+    "url": "git+https://github.com/Krombik/html2react.git"
   },
   "bugs": {
-    "url": "https://github.com/Krombik/html2react-parser/issues"
+    "url": "https://github.com/Krombik/html2react/issues"
   },
-  "homepage": "https://github.com/Krombik/html2react-parser#readme",
+  "homepage": "https://github.com/Krombik/html2react#readme",
   "type": "module",
   "source": "src/index.ts",
   "engines": {

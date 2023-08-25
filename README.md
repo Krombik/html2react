@@ -1,4 +1,4 @@
-# html2react-parser
+# react-html-string-parser
 
 Lightweight library that allows you to convert HTML markup to React components on the client and server side, while providing flexibility in handling tags, attributes, and text segments.
 
@@ -7,19 +7,19 @@ Lightweight library that allows you to convert HTML markup to React components o
 using npm:
 
 ```
-npm install --save html2react-parser
+npm install --save react-html-string-parser
 ```
 
 or yarn:
 
 ```
-yarn add html2react-parser
+yarn add react-html-string-parser
 ```
 
 or pnpm:
 
 ```
-pnpm add html2react-parser
+pnpm add react-html-string-parser
 ```
 
 ---
@@ -59,7 +59,7 @@ const HTML2React: FC<HTML2ReactProps>;
 Example:
 
 ```jsx
-import HTML2React from 'html2react-parser/HTML2React';
+import HTML2React from 'react-html-string-parser/HTML2React';
 
 <HTML2React
   html='<div><h1>Title</h1><br><p>Paragraph</p><br /><button data-attribute="any" tabindex="1">Button</button>text</div>'
@@ -94,8 +94,8 @@ const styleConverter: (value: string) => CSSProperties;
 Example:
 
 ```js
-import HTML2React from 'html2react-parser/HTML2React';
-import styleConverter from 'html2react-parser/styleConverter';
+import HTML2React from 'react-html-string-parser/HTML2React';
+import styleConverter from 'react-html-string-parser/styleConverter';
 
 <HTML2React
   html='<p style="margin-top: 25px; margin-bottom:10px;">text</p>'
