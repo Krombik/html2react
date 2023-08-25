@@ -1,3 +1,6 @@
+/**
+ * based on [this](https://github.com/facebook/react/blob/ab31a9ed28d340172440e4b12e27d2af689249b3/packages/react-dom-bindings/src/shared/possibleStandardNames.js#L11)
+ */
 export type HTMLAttributes2ReactProps = {
   acceptcharset: 'acceptCharset';
   'accept-charset': 'acceptCharset';
