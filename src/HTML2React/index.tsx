@@ -13,9 +13,15 @@ export type HTML2ReactProps = {
   html: string;
   /** Custom tag components to replace HTML tags. If a component is not provided, the corresponding HTML tag will be used. */
   components?: Partial<
-    Record<keyof JSX.IntrinsicElements, ComponentType<Record<string, any>>>
+    Record<
+      keyof JSX.IntrinsicElements,
+      ComponentType<Record<string, any>> | keyof JSX.IntrinsicElements
+    >
   > &
-    Record<string, ComponentType<Record<string, any>>>;
+    Record<
+      string,
+      ComponentType<Record<string, any>> | keyof JSX.IntrinsicElements
+    >;
   /** Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is. */
   attributes?: Partial<HTMLAttributes2ReactProps> & Record<string, string>;
   /** Converters for processing attribute values. If no converter is provided, the property will be of type string. */
