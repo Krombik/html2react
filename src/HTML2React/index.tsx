@@ -97,9 +97,9 @@ const HTML2React: FC<HTML2ReactProps> = ({
         }
       }
     } else if (char != '!') {
-      start = index;
+      start = search(index, NON_WHITESPACE_CHARACTER);
 
-      index = search(index, HTML_SPECIAL_CHAR);
+      index = search(start, HTML_SPECIAL_CHAR);
 
       const tag = html.substring(start, index);
 
