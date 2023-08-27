@@ -193,8 +193,10 @@ const HTML2React: FC<HTML2ReactProps> = ({
       }
 
       parentChildren.push(<Component {...props} />);
+    } else if (html.substring(++index, index + 7) == 'DOCTYPE') {
+      index = indexOf('>', index + 7);
     } else {
-      index = indexOf('-->', index + 1) + 2;
+      index = indexOf('-->', index) + 2;
     }
 
     start = ++index;
