@@ -47,6 +47,7 @@ const run = async (outDir: string) => {
     esbuildOptions: (options) => {
       options.chunkNames = '_chunks/[ext]/[name]-[hash]';
     },
+    watch: process.argv.includes('--watch'),
   });
 };
 
