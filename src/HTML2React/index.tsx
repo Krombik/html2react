@@ -96,6 +96,11 @@ const HTML2React: FC<HTML2ReactProps> = ({
           break;
         }
       }
+      // reject unexpected characters (accepting lowercase letters or ! at this point)
+    } else if (/[^a-z!]/.test(char)) {
+      // back up to the < character and continue processing
+      start = index - 1;
+      continue;
     } else if (char != '!') {
       start = search(index, NON_WHITESPACE_CHARACTER);
 
