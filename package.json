@@ -4,6 +4,9 @@
   "description": "Converting HTML markup to React components on the client and server side.",
   "author": "Krombik",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Krombik/html2react.git"
@@ -12,13 +15,42 @@
     "url": "https://github.com/Krombik/html2react/issues"
   },
   "homepage": "https://github.com/Krombik/html2react#readme",
-  "type": "module",
-  "source": "src/index.ts",
   "engines": {
     "node": ">=10"
   },
+  "type": "module",
+  "source": "src/index.ts",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./build/index.js",
+      "default": "./build/index.cjs",
+      "types": "./build/index.d.ts"
+    },
+    "./HTML2React": {
+      "import": "./build/HTML2React/index.js",
+      "default": "./build/HTML2React/index.cjs",
+      "types": "./build/HTML2React/index.d.ts"
+    },
+    "./styleConverter": {
+      "import": "./build/styleConverter/index.js",
+      "default": "./build/styleConverter/index.cjs",
+      "types": "./build/styleConverter/index.d.ts"
+    }
+  },
+  "files": [
+    "build",
+    "src",
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "tsconfig.json"
+  ],
   "scripts": {
-    "build": "ts-node ./scripts/build.mts"
+    "build": "tsx ./scripts/build.mts",
+    "prepublishOnly": "rimraf build && pnpm run build"
   },
   "peerDependencies": {
     "@types/react": ">=16.8.0",
@@ -37,8 +69,9 @@
     "@types/node": "^20.5.4",
     "@types/react": "^18.2.21",
     "prettier": "^3.0.2",
-    "ts-node": "^10.9.1",
+    "rimraf": "^5.0.5",
     "tsup": "^7.2.0",
+    "tsx": "^4.7.1",
     "typescript": "^5.1.6"
   },
   "keywords": [

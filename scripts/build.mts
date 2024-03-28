@@ -1,12 +1,7 @@
+import fs from 'fs/promises';
 import { build } from 'tsup';
 import ts from 'typescript';
-import fs from 'fs/promises';
-import { FILES_TO_COPY } from './constants.mjs';
-import {
-  addNestedPackagesJson,
-  getMainPackageJson,
-  handleChild,
-} from './utils.mjs';
+import { handleChild } from './utils.mjs';
 
 const run = async (outDir: string) => {
   await fs.rm(outDir, { recursive: true, force: true });
@@ -36,8 +31,6 @@ const run = async (outDir: string) => {
     await handleChild(path);
   }
 
-  await addNestedPackagesJson(outDir);
-
   await build({
     outDir,
     minify: false,
@@ -55,14 +48,6 @@ const run = async (outDir: string) => {
       options.chunkNames = '_chunks/[ext]/[name]-[hash]';
     },
   });
-
-  await fs.writeFile(`${outDir}/package.json`, await getMainPackageJson());
-
-  for (let i = 0; i < FILES_TO_COPY.length; i++) {
-    const fileName = FILES_TO_COPY[i];
-
-    await fs.copyFile(fileName, `${outDir}/${fileName}`);
-  }
 };
 
 run('build');
