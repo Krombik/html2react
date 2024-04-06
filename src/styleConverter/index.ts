@@ -1,18 +1,4 @@
-import { CSSProperties } from 'react';
-
-const toCamelCase = (str: string) => {
-  const arr = str.split('-');
-
-  let res = arr[0];
-
-  for (let i = 1; i < arr.length; i++) {
-    const item = arr[i];
-
-    res += item[0].toUpperCase() + item.substring(1);
-  }
-
-  return res;
-};
+import type { CSSProperties } from 'react';
 
 const styleConverter = (value: string) =>
   value.split(';').reduce<CSSProperties>((acc, item) => {
@@ -22,7 +8,17 @@ const styleConverter = (value: string) =>
 
     const t = item.split(':');
 
-    return { ...acc, [toCamelCase(t[0].trim())]: (t[1] || '').trim() };
+    const arr = t[0].trim().split('-');
+
+    let key = arr[0];
+
+    for (let i = 1; i < arr.length; i++) {
+      const item = arr[i];
+
+      key += item[0].toUpperCase() + item.substring(1);
+    }
+
+    return { ...acc, [key]: (t[1] || '').trim() };
   }, {});
 
 export default styleConverter;

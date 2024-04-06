@@ -1,37 +1,44 @@
-import React, { ComponentType, FC, PropsWithChildren, ReactNode } from 'react';
 import {
-  HTML_ATTRIBUTE_CHAR,
-  HTML_SPECIAL_CHAR,
-  NON_WHITESPACE_CHARACTER,
-  VOID_TAGS,
-} from '../constants';
-import { Converters, HTMLAttributes2ReactProps } from '../types';
-import identity from 'lodash.identity';
+  createElement,
+  type FC,
+  type PropsWithChildren,
+  type ReactNode,
+} from 'react';
+import type { HTML2ReactProps } from '../types';
 
-export type HTML2ReactProps = {
-  /** The HTML content to be converted to React components. */
-  html: string;
-  /** Custom tag components to replace HTML tags. If a component is not provided, the corresponding HTML tag will be used. */
-  components?: Partial<
-    Record<
-      keyof JSX.IntrinsicElements,
-      ComponentType<Record<string, any>> | keyof JSX.IntrinsicElements
-    >
-  > &
-    Record<
-      string,
-      ComponentType<Record<string, any>> | keyof JSX.IntrinsicElements
-    >;
-  /** Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is. */
-  attributes?: Partial<HTMLAttributes2ReactProps> & Record<string, string>;
-  /** Converters for processing attribute values. If no converter is provided, the property will be of type string. */
-  converters?: Converters;
-  /**
-   * Process text segments within the HTML content.
-   * @param segment - The text segment to be processed.
-   * @returns The processed text segment.
-   */
-  processTextSegment?(segment: string): string;
+export { type HTML2ReactProps };
+
+const NON_WHITESPACE_CHARACTER = /[^\s]/;
+
+const HTML_SPECIAL_CHAR = /[\s>/]/;
+
+const HTML_ATTRIBUTE_CHAR = /[=\s>/]/;
+
+const VOID_TAGS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+]);
+
+const _isVoidTag: (tag: string) => boolean = VOID_TAGS.has.bind(VOID_TAGS);
+
+const _handleIndex = (index: number) => {
+  if (index < 0) {
+    throw new Error('invalid html');
+  }
+
+  return index;
 };
 
 const HTML2React: FC<HTML2ReactProps> = ({
@@ -39,43 +46,55 @@ const HTML2React: FC<HTML2ReactProps> = ({
   components = {},
   attributes = {},
   converters = {},
-  processTextSegment = identity,
+  processTextSegment,
 }) => {
   let start = 0;
 
   const tagsQueue = new Array<string>(1);
 
-  const childrenQueue: ReactNode[][] = [[]];
+  const root: ReactNode[] = [];
 
-  const search = (index: number, regexp: RegExp) => {
-    const next = html.substring(index).search(regexp);
+  const childrenQueue = [root];
 
-    if (next < 0) {
-      throw new Error('invalid html');
-    }
+  const substring: String['substring'] = html.substring.bind(html);
 
-    return index + next;
-  };
+  const _indexOf: String['indexOf'] = html.indexOf.bind(html);
 
-  const indexOf = (item: string, index: number) => {
-    index = html.indexOf(item, index);
+  const search = (index: number, regexp: RegExp) =>
+    index + _handleIndex(substring(index).search(regexp));
 
-    if (index < 0) {
-      throw new Error('invalid html');
-    }
+  const indexOf = (item: string, index: number) =>
+    _handleIndex(_indexOf(item, index));
 
-    return index;
-  };
+  const handleTextSegment: (
+    nodes: ReactNode[],
+    start: number,
+    end?: number
+  ) => void = processTextSegment
+    ? (nodes, start, end) => {
+        let l = nodes.length;
+
+        const segment = processTextSegment(substring(start, end), () => l++);
+
+        if (Array.isArray(segment)) {
+          nodes.push(...segment);
+        } else {
+          nodes.push(segment);
+        }
+      }
+    : (nodes, start, end) => {
+        nodes.push(substring(start, end));
+      };
 
   for (
-    let index = html.indexOf('<'), char: string;
+    let index = _indexOf('<'), char: string;
     index != -1;
-    index = html.indexOf('<', index)
+    index = _indexOf('<', index)
   ) {
     const parentChildren = childrenQueue[childrenQueue.length - 1];
 
     if (start != index) {
-      parentChildren.push(processTextSegment(html.substring(start, index)));
+      handleTextSegment(parentChildren, start, index);
     }
 
     char = html[++index];
@@ -85,7 +104,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
       index = indexOf('>', index);
 
-      const tag = html.substring(start, index).trim();
+      const tag = substring(start, index).trim();
 
       for (let j = tagsQueue.length; j--; ) {
         if (tagsQueue[j] == tag) {
@@ -101,9 +120,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
       index = search(start, HTML_SPECIAL_CHAR);
 
-      const tag = html.substring(start, index);
-
-      const Component = components[tag] || tag;
+      const tag = substring(start, index);
 
       const props: PropsWithChildren<{ key: number; [key: string]: any }> = {
         key: parentChildren.length,
@@ -124,9 +141,9 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
         char = html[index];
 
-        const htmlKey = html.substring(start, index);
+        const htmlKey = substring(start, index);
 
-        const key = attributes[htmlKey] || htmlKey;
+        const key = htmlKey in attributes ? attributes[htmlKey] : htmlKey;
 
         let value;
 
@@ -145,14 +162,14 @@ const HTML2React: FC<HTML2ReactProps> = ({
             ? indexOf(char, ++index)
             : search(index, HTML_SPECIAL_CHAR);
 
-          value = html.substring(index, next);
+          value = substring(index, next);
 
           index = next + (isWrapped as any);
         } else {
           value = 'true';
         }
 
-        props[key] = key in converters ? converters[key](value) : value;
+        props[key] = key in converters ? converters[key](value, tag) : value;
       }
 
       if (html[index] == '/') {
@@ -160,13 +177,13 @@ const HTML2React: FC<HTML2ReactProps> = ({
       }
 
       if (tag != 'script') {
-        if (!VOID_TAGS.has(tag)) {
+        if (!_isVoidTag(tag)) {
           childrenQueue.push((props.children = []));
 
           tagsQueue.push(tag);
         }
       } else {
-        const str = html.substring(index + 1);
+        const str = substring(index + 1);
 
         const scriptClosingTag = /<\/\s*script\s*>/.exec(str);
 
@@ -192,8 +209,10 @@ const HTML2React: FC<HTML2ReactProps> = ({
         }
       }
 
-      parentChildren.push(<Component {...props} />);
-    } else if (html.substring(++index, index + 7) == 'DOCTYPE') {
+      parentChildren.push(
+        createElement(tag in components ? components[tag] : tag, props)
+      );
+    } else if (substring(++index, index + 7) == 'DOCTYPE') {
       index = indexOf('>', index + 7);
     } else {
       index = indexOf('-->', index) + 2;
@@ -203,12 +222,10 @@ const HTML2React: FC<HTML2ReactProps> = ({
   }
 
   if (start < html.length) {
-    childrenQueue[childrenQueue.length - 1].push(
-      processTextSegment(html.substring(start))
-    );
+    handleTextSegment(childrenQueue[childrenQueue.length - 1], start);
   }
 
-  return <>{childrenQueue[0]}</>;
+  return root.length > 1 ? root : root[0];
 };
 
 export default HTML2React;
