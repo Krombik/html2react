@@ -1,7 +1,9 @@
+import type { ComponentType, ReactNode } from 'react';
+
 /**
  * based on [this](https://github.com/facebook/react/blob/ab31a9ed28d340172440e4b12e27d2af689249b3/packages/react-dom-bindings/src/shared/possibleStandardNames.js#L11)
  */
-export type HTMLAttributes2ReactProps = {
+type HTMLAttributes2ReactProps = {
   acceptcharset: 'acceptCharset';
   'accept-charset': 'acceptCharset';
   accesskey: 'accessKey';
@@ -311,8 +313,8 @@ type RemoveFunctions<T> = {
   [K in keyof T as T[K] extends (...args: any[]) => any
     ? never
     : T[K] extends string
-    ? never
-    : K]: T[K];
+      ? never
+      : K]: T[K];
 };
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
@@ -322,18 +324,40 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   : never;
 
 type IntrinsicElements = {
-  [key in keyof JSX.IntrinsicElements]: Omit<
+  [key in CommonComponent]: Omit<
     RemoveFunctions<Required<JSX.IntrinsicElements[key]>>,
     'ref' | 'key' | 'dangerouslySetInnerHTML' | 'children'
   >;
 };
 
 type BasicProps = Partial<
-  UnionToIntersection<IntrinsicElements[keyof IntrinsicElements]>
+  UnionToIntersection<IntrinsicElements[CommonComponent]>
 >;
 
-export type Converters = {
-  [key in keyof BasicProps]?: (value: string) => BasicProps[key];
+type Converters = {
+  [key in keyof BasicProps]?: (value: string, tag: string) => BasicProps[key];
 } & {
-  [key: string]: (value: string) => any;
+  [key: string]: (value: string, tag: string) => any;
+};
+
+type CommonComponent = keyof JSX.IntrinsicElements;
+
+type AnyComponent = ComponentType<Record<string, any>> | CommonComponent;
+
+export type HTML2ReactProps = {
+  /** The HTML content to be converted to React components. */
+  html: string;
+  /** Custom tag components to replace HTML tags. If a component is not provided, the corresponding HTML tag will be used. */
+  components?: Partial<Record<CommonComponent, AnyComponent>> &
+    Record<string, AnyComponent>;
+  /** Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is. */
+  attributes?: Partial<HTMLAttributes2ReactProps> & Record<string, string>;
+  /** Converters for processing attribute values. If no converter is provided, the property will be of type string. */
+  converters?: Converters;
+  /**
+   * Process text segments within the HTML content.
+   * @param segment - The text segment to be processed.
+   * @returns The processed text segment.
+   */
+  processTextSegment?(segment: string, getKey: () => number): ReactNode;
 };

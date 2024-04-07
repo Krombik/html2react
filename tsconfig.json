@@ -20,10 +20,6 @@
     "stripInternal": true,
     "types": ["node"]
   },
-  "ts-node": {
-    "esm": true,
-    "files": true
-  },
-  "include": ["src", "scripts"],
+  "include": ["src", "tsup.config.ts"],
   "exclude": ["node_modules", "build", "example"]
 }

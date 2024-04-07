@@ -41,8 +41,8 @@ type HTML2ReactProps = {
     ComponentType<Record<string, any>> | keyof JSX.IntrinsicElements
   >;
   attributes?: Record<string, string>;
-  converters?: Record<string, (value: string) => any>;
-  processTextSegment?(segment: string): string;
+  converters?: Record<string, (value: string, tag: string) => any>;
+  processTextSegment?(segment: string, getKey: () => number): ReactNode;
 };
 
 const HTML2React: FC<HTML2ReactProps>;
