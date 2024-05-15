@@ -8,7 +8,7 @@ import type { HTML2ReactProps } from '../types';
 
 export { type HTML2ReactProps };
 
-const NON_WHITESPACE_CHARACTER = /[^\s]/;
+const NON_WHITESPACE_CHARACTER = /\S/;
 
 const HTML_SPECIAL_CHAR = /[\s>/]/;
 
@@ -87,11 +87,33 @@ const HTML2React: FC<HTML2ReactProps> = ({
       };
 
   for (
-    let index = _indexOf('<'), char: string;
+    let index = _indexOf('<'),
+      char: string,
+      end: number,
+      _next: number,
+      tag: string,
+      attribute: string,
+      value: string,
+      props: PropsWithChildren<{ key: number; [key: string]: any }>,
+      parentChildren = root;
     index != -1;
-    index = _indexOf('<', index)
+    parentChildren = childrenQueue[childrenQueue.length - 1]
   ) {
-    const parentChildren = childrenQueue[childrenQueue.length - 1];
+    end = _indexOf('>', index + 1);
+
+    if (end > 0) {
+      while (true) {
+        _next = _indexOf('<', index + 1);
+
+        if (_next > 0 && _next < end) {
+          index = _next;
+        } else {
+          break;
+        }
+      }
+    } else {
+      break;
+    }
 
     if (start != index) {
       handleTextSegment(parentChildren, start, index);
@@ -100,11 +122,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
     char = html[++index];
 
     if (char == '/') {
-      start = ++index;
-
-      index = indexOf('>', index);
-
-      const tag = substring(start, index).trim();
+      tag = substring(index + 1, end).trim();
 
       for (let j = tagsQueue.length; j--; ) {
         if (tagsQueue[j] == tag) {
@@ -116,64 +134,51 @@ const HTML2React: FC<HTML2ReactProps> = ({
         }
       }
     } else if (char != '!') {
-      start = search(index, NON_WHITESPACE_CHARACTER);
+      tag = substring(
+        index,
+        (index = search(index + 1, HTML_SPECIAL_CHAR))
+      ).trim();
 
-      index = search(start, HTML_SPECIAL_CHAR);
+      index = search(index, NON_WHITESPACE_CHARACTER);
 
-      const tag = substring(start, index);
-
-      const props: PropsWithChildren<{ key: number; [key: string]: any }> = {
+      props = {
         key: parentChildren.length,
       };
 
-      while (true) {
-        index = search(index, NON_WHITESPACE_CHARACTER);
+      while (end != index && html[index] != '/') {
+        attribute = substring(
+          index,
+          (index = search(index + 1, HTML_ATTRIBUTE_CHAR))
+        ).trim();
 
-        char = html[index];
-
-        if (char == '/' || char == '>') {
-          break;
+        if (attribute in attributes) {
+          attribute = attributes[attribute];
         }
 
-        start = index;
-
-        index = search(index, HTML_ATTRIBUTE_CHAR);
-
         char = html[index];
-
-        const htmlKey = substring(start, index);
-
-        const key = htmlKey in attributes ? attributes[htmlKey] : htmlKey;
-
-        let value;
 
         if (char != '=' && char != '/' && char != '>') {
           index = search(index + 1, NON_WHITESPACE_CHARACTER);
         }
 
         if (html[index] == '=') {
-          index = search(index + 1, NON_WHITESPACE_CHARACTER);
-
-          char = html[index];
+          char = html[(index = search(index + 1, NON_WHITESPACE_CHARACTER))];
 
           const isWrapped = char == "'" || char == '"';
 
           const next = isWrapped
             ? indexOf(char, ++index)
-            : search(index, HTML_SPECIAL_CHAR);
+            : search(index + 1, HTML_SPECIAL_CHAR);
 
           value = substring(index, next);
 
-          index = next + (isWrapped as any);
+          index = search(next + (isWrapped as any), NON_WHITESPACE_CHARACTER);
         } else {
           value = 'true';
         }
 
-        props[key] = key in converters ? converters[key](value, tag) : value;
-      }
-
-      if (html[index] == '/') {
-        index++;
+        props[attribute] =
+          attribute in converters ? converters[attribute](value, tag) : value;
       }
 
       if (tag != 'script') {
@@ -183,7 +188,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
           tagsQueue.push(tag);
         }
       } else {
-        const str = substring(index + 1);
+        const str = substring(end + 1);
 
         const scriptClosingTag = /<\/\s*script\s*>/.exec(str);
 
@@ -204,7 +209,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
               ).dangerouslySetInnerHTML = { __html: code };
             }
 
-            index += indexOfScriptClosingTag + scriptClosingTag[0].length;
+            end += indexOfScriptClosingTag + scriptClosingTag[0].length;
           }
         }
       }
@@ -212,13 +217,13 @@ const HTML2React: FC<HTML2ReactProps> = ({
       parentChildren.push(
         createElement(tag in components ? components[tag] : tag, props)
       );
-    } else if (substring(++index, index + 7) == 'DOCTYPE') {
-      index = indexOf('>', index + 7);
-    } else {
-      index = indexOf('-->', index) + 2;
+    } else if (html[++index] == '-' && html[++index] == '-') {
+      end = indexOf('-->', index) + 2;
     }
 
-    start = ++index;
+    start = end + 1;
+
+    index = _next;
   }
 
   if (start < html.length) {
