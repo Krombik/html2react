@@ -368,4 +368,13 @@ export type HTML2ReactProps = {
     segment: string,
     getKey: () => number
   ): Segment | Segment[];
+  /**
+   * Returns a component for the given {@link tag}. If it returns `undefined`, the {@link tag} will be used as a component.
+   *
+   * This function will be called if the {@link tag} is not found in the {@link HTML2ReactProps.components components}.
+   *
+   * @param tag - The HTML tag for which to retrieve a component.
+   * @returns The component associated with the given {@link tag}, or `undefined` if not found.
+   */
+  getComponent?(tag: string): AnyComponent | undefined;
 };
