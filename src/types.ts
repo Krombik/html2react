@@ -342,12 +342,17 @@ type Converters = {
 
 type CommonComponent = keyof JSX.IntrinsicElements;
 
-type AnyComponent = ComponentType<Record<string, any>> | CommonComponent;
+export type AnyComponent = ComponentType<Record<string, any>> | CommonComponent;
+
+export type Segment = Exclude<ReactNode, Iterable<ReactNode>> | string;
 
 export type HTML2ReactProps = {
   /** The HTML content to be converted to React components. */
   html: string;
-  /** Custom tag components to replace HTML tags. If a component is not provided, the corresponding HTML tag will be used. */
+  /**
+   * Custom tag components to replace HTML tags. If a component is not provided, the corresponding HTML tag will be used.
+   * > keys are not case sensetive,
+   */
   components?: Partial<Record<CommonComponent, AnyComponent>> &
     Record<string, AnyComponent>;
   /** Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is. */
@@ -359,5 +364,8 @@ export type HTML2ReactProps = {
    * @param segment - The text segment to be processed.
    * @returns The processed text segment.
    */
-  processTextSegment?(segment: string, getKey: () => number): ReactNode;
+  processTextSegment?(
+    segment: string,
+    getKey: () => number
+  ): Segment | Segment[];
 };

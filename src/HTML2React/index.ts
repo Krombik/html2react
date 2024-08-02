@@ -1,10 +1,6 @@
-import {
-  createElement,
-  type FC,
-  type PropsWithChildren,
-  type ReactNode,
-} from 'react';
-import type { HTML2ReactProps } from '../types';
+import { createElement, type FC, type PropsWithChildren } from 'react';
+import type { AnyComponent, HTML2ReactProps, Segment } from '../types';
+import noop from 'lodash.noop';
 
 export { type HTML2ReactProps };
 
@@ -41,18 +37,62 @@ const _handleIndex = (index: number) => {
   return index;
 };
 
+const createComponentGetter = (
+  components: HTML2ReactProps['components']
+): ((tag: string) => AnyComponent | void) => {
+  if (components) {
+    const map = new Map<string, AnyComponent>();
+
+    const keys = Object.keys(components);
+
+    for (let i = keys.length; i--; ) {
+      const key = keys[i];
+
+      map.set(key.toLowerCase(), components[key]);
+    }
+
+    return map.get.bind(map);
+  }
+
+  return noop;
+};
+
+const handleSegment = (segment: Segment, nodes: Node[]) => {
+  if ((segment && segment !== true) || segment == 0) {
+    const typeofSegment = typeof segment;
+
+    if (typeofSegment == 'object') {
+      nodes.push(segment as JSX.Element);
+    } else {
+      let l = nodes.length;
+
+      if (l && typeof nodes[--l] != 'object') {
+        nodes[l] += segment as string;
+      } else {
+        nodes.push(
+          typeofSegment != 'number' ? (segment as string) : '' + segment
+        );
+      }
+    }
+  }
+};
+
+type Node = JSX.Element | string;
+
 const HTML2React: FC<HTML2ReactProps> = ({
   html,
-  components = {},
+  components,
   attributes = {},
   converters = {},
   processTextSegment,
 }) => {
   let start = 0;
 
+  const getComponent = createComponentGetter(components);
+
   const tagsQueue = new Array<string>(1);
 
-  const root: ReactNode[] = [];
+  const root: Node[] = [];
 
   const childrenQueue = [root];
 
@@ -67,7 +107,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
     _handleIndex(_indexOf(item, index));
 
   const handleTextSegment: (
-    nodes: ReactNode[],
+    nodes: Node[],
     start: number,
     end?: number
   ) => void = processTextSegment
@@ -77,9 +117,11 @@ const HTML2React: FC<HTML2ReactProps> = ({
         const segment = processTextSegment(substring(start, end), () => l++);
 
         if (Array.isArray(segment)) {
-          nodes.push(...segment);
+          for (let i = 0; i < segment.length; i++) {
+            handleSegment(segment[i], nodes);
+          }
         } else {
-          nodes.push(segment);
+          handleSegment(segment, nodes);
         }
       }
     : (nodes, start, end) => {
@@ -92,6 +134,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
       end: number,
       _next: number,
       tag: string,
+      normalizedTag: string,
       attribute: string,
       value: string,
       props: PropsWithChildren<{ key: number; [key: string]: any }>,
@@ -139,6 +182,8 @@ const HTML2React: FC<HTML2ReactProps> = ({
         (index = search(index + 1, HTML_SPECIAL_CHAR))
       ).trim();
 
+      normalizedTag = tag.toLowerCase();
+
       index = search(index, NON_WHITESPACE_CHARACTER);
 
       props = {
@@ -181,8 +226,8 @@ const HTML2React: FC<HTML2ReactProps> = ({
           attribute in converters ? converters[attribute](value, tag) : value;
       }
 
-      if (tag != 'script') {
-        if (!_isVoidTag(tag)) {
+      if (normalizedTag != 'script') {
+        if (!_isVoidTag(normalizedTag)) {
           childrenQueue.push((props.children = []));
 
           tagsQueue.push(tag);
@@ -215,7 +260,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
       }
 
       parentChildren.push(
-        createElement(tag in components ? components[tag] : tag, props)
+        createElement(getComponent(normalizedTag) || tag, props)
       );
     } else if (html[++index] == '-' && html[++index] == '-') {
       end = indexOf('-->', index) + 2;
