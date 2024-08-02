@@ -48,13 +48,14 @@ type HTML2ReactProps = {
 const HTML2React: FC<HTML2ReactProps>;
 ```
 
-| Prop                  | Description                                                                                                                                           |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `html`                | The HTML string to be converted into React components.                                                                                                |
-| `components?`         | Custom tag components to replace HTML tags. **Keys are not case sensitive**. If a component is not provided, the corresponding HTML tag will be used. |
-| `attributes?`         | Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is.                                         |
-| `converters?`         | Converters for processing attribute values. If no converter is provided, the property will be of type `string`.                                       |
-| `processTextSegment?` | Method to process and transform string parts of HTML content.                                                                                         |
+| Prop                  | Description                                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `html`                | The HTML string to be converted into React components.                                                                                                                                     |
+| `components?`         | Custom tag components to replace HTML tags. **Keys are not case sensitive**. If a component is not provided, the corresponding HTML tag will be used.                                      |
+| `getComponent?`       | Returns a component for the given tag. If it returns `undefined`, the `tag` will be used as a component. <br/> This function will be called if the `tag` is not found in the `components`. |
+| `attributes?`         | Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is.                                                                              |
+| `converters?`         | Converters for processing attribute values. If no converter is provided, the property will be of type `string`.                                                                            |
+| `processTextSegment?` | Method to process and transform string parts of HTML content.                                                                                                                              |
 
 Example:
 

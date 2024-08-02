@@ -85,10 +85,11 @@ const HTML2React: FC<HTML2ReactProps> = ({
   attributes = {},
   converters = {},
   processTextSegment,
+  getComponent = noop,
 }) => {
   let start = 0;
 
-  const getComponent = createComponentGetter(components);
+  const _getComponent = createComponentGetter(components);
 
   const tagsQueue = new Array<string>(1);
 
@@ -260,7 +261,10 @@ const HTML2React: FC<HTML2ReactProps> = ({
       }
 
       parentChildren.push(
-        createElement(getComponent(normalizedTag) || tag, props)
+        createElement(
+          _getComponent(normalizedTag) || getComponent(tag) || tag,
+          props
+        )
       );
     } else if (html[++index] == '-' && html[++index] == '-') {
       end = indexOf('-->', index) + 2;
