@@ -1,8 +1,14 @@
 import { createElement, type FC, type PropsWithChildren } from 'react';
-import type { AnyComponent, HTML2ReactProps, Segment } from '../types';
+import type {
+  AnyComponent,
+  HTML2ReactProps,
+  Meta,
+  MetaProps,
+  Segment,
+} from '../types';
 import noop from 'lodash.noop';
 
-export { type HTML2ReactProps };
+export { type HTML2ReactProps, type MetaProps };
 
 const NON_WHITESPACE_CHARACTER = /\S/;
 
@@ -57,27 +63,43 @@ const createComponentGetter = (
   return noop;
 };
 
-const handleSegment = (segment: Segment, nodes: Node[]) => {
-  if ((segment && segment !== true) || segment == 0) {
+const handleSegment = (
+  segment: Segment,
+  nodesChildren: NodeChildren[],
+  parentMeta: Meta | false | undefined
+) => {
+  if ((segment && segment !== true) || segment === 0) {
     const typeofSegment = typeof segment;
 
-    if (typeofSegment == 'object') {
-      nodes.push(segment as JSX.Element);
-    } else {
-      let l = nodes.length;
+    let l = nodesChildren.length;
 
-      if (l && typeof nodes[--l] != 'object') {
-        nodes[l] += segment as string;
+    if (typeofSegment == 'object') {
+      nodesChildren.push({ ...(segment as JSX.Element), key: l as any });
+
+      if (parentMeta) {
+        parentMeta.children!.push({
+          index: l,
+          type: (segment as JSX.Element).type,
+          parent: parentMeta,
+        });
+      }
+    } else {
+      if (l && typeof nodesChildren[--l] != 'object') {
+        nodesChildren[l] += segment as string;
       } else {
-        nodes.push(
+        nodesChildren.push(
           typeofSegment != 'number' ? (segment as string) : '' + segment
         );
+
+        if (parentMeta) {
+          parentMeta.children!.length++;
+        }
       }
     }
   }
 };
 
-type Node = JSX.Element | string;
+type NodeChildren = JSX.Element | string;
 
 const HTML2React: FC<HTML2ReactProps> = ({
   html,
@@ -86,16 +108,24 @@ const HTML2React: FC<HTML2ReactProps> = ({
   converters = {},
   processTextSegment,
   getComponent = noop,
+  shouldBeIgnored,
+  withMeta,
 }) => {
   let start = 0;
 
+  let currentNodeChildren: NodeChildren[] = [];
+
+  let currentMeta = withMeta && ({ index: 0, children: [] } as Meta);
+
   const _getComponent = createComponentGetter(components);
 
-  const tagsQueue = new Array<string>(1);
+  const rootNodeChildren = currentNodeChildren;
 
-  const root: Node[] = [];
+  const tagsQueue: string[] = [];
 
-  const childrenQueue = [root];
+  const metaQueue = [currentMeta];
+
+  const nodesChildrenQueue = [rootNodeChildren];
 
   const substring: String['substring'] = html.substring.bind(html);
 
@@ -108,25 +138,27 @@ const HTML2React: FC<HTML2ReactProps> = ({
     _handleIndex(_indexOf(item, index));
 
   const handleTextSegment: (
-    nodes: Node[],
-    start: number,
-    end?: number
+    nodesChildren: NodeChildren[],
+    parentMeta: Meta | false | undefined,
+    text: string
   ) => void = processTextSegment
-    ? (nodes, start, end) => {
-        let l = nodes.length;
-
-        const segment = processTextSegment(substring(start, end), () => l++);
+    ? (nodesChildren, parentMeta, text) => {
+        const segment = processTextSegment(text, parentMeta as Meta);
 
         if (Array.isArray(segment)) {
           for (let i = 0; i < segment.length; i++) {
-            handleSegment(segment[i], nodes);
+            handleSegment(segment[i], nodesChildren, parentMeta);
           }
         } else {
-          handleSegment(segment, nodes);
+          handleSegment(segment, nodesChildren, parentMeta);
         }
       }
-    : (nodes, start, end) => {
-        nodes.push(substring(start, end));
+    : (nodesChildren, parentMeta, text) => {
+        nodesChildren.push(text);
+
+        if (parentMeta) {
+          parentMeta.children!.length++;
+        }
       };
 
   for (
@@ -138,10 +170,14 @@ const HTML2React: FC<HTML2ReactProps> = ({
       normalizedTag: string,
       attribute: string,
       value: string,
-      props: PropsWithChildren<{ key: number; [key: string]: any }>,
-      parentChildren = root;
+      props: PropsWithChildren<
+        { key: number; [key: string]: any } & Partial<MetaProps>
+      >,
+      component: AnyComponent | string,
+      meta: Meta,
+      parentChildren = currentNodeChildren;
     index != -1;
-    parentChildren = childrenQueue[childrenQueue.length - 1]
+    parentChildren = currentNodeChildren
   ) {
     end = _indexOf('>', index + 1);
 
@@ -160,7 +196,11 @@ const HTML2React: FC<HTML2ReactProps> = ({
     }
 
     if (start != index) {
-      handleTextSegment(parentChildren, start, index);
+      handleTextSegment(
+        currentNodeChildren,
+        currentMeta,
+        substring(start, index)
+      );
     }
 
     char = html[++index];
@@ -170,9 +210,31 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
       for (let j = tagsQueue.length; j--; ) {
         if (tagsQueue[j] == tag) {
+          metaQueue.length = nodesChildrenQueue.length = j + 1;
+
           tagsQueue.length = j;
 
-          childrenQueue.length = j;
+          currentNodeChildren = nodesChildrenQueue[j];
+
+          currentMeta = metaQueue[j];
+
+          if (
+            shouldBeIgnored &&
+            shouldBeIgnored(
+              tag,
+              (
+                currentNodeChildren[
+                  (j = currentNodeChildren.length - 1)
+                ] as JSX.Element
+              ).props
+            )
+          ) {
+            currentNodeChildren.length = j;
+
+            if (currentMeta) {
+              currentMeta.children!.length = j;
+            }
+          }
 
           break;
         }
@@ -185,11 +247,27 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
       normalizedTag = tag.toLowerCase();
 
-      index = search(index, NON_WHITESPACE_CHARACTER);
-
       props = {
-        key: parentChildren.length,
+        key: currentNodeChildren.length,
       };
+
+      component = _getComponent(normalizedTag) || getComponent(tag) || tag;
+
+      if (currentMeta) {
+        meta = {
+          type: component,
+          index: props.key,
+          parent: currentMeta,
+        };
+
+        currentMeta.children!.push(meta);
+
+        if (typeof component != 'string') {
+          props._meta = meta;
+        }
+      }
+
+      index = search(index, NON_WHITESPACE_CHARACTER);
 
       while (end != index && html[index] != '/') {
         attribute = substring(
@@ -229,9 +307,15 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
       if (normalizedTag != 'script') {
         if (!_isVoidTag(normalizedTag)) {
-          childrenQueue.push((props.children = []));
-
           tagsQueue.push(tag);
+
+          nodesChildrenQueue.push((currentNodeChildren = props.children = []));
+
+          if (currentMeta) {
+            meta!.children = [];
+
+            metaQueue.push((currentMeta = meta!));
+          }
         }
       } else {
         const str = substring(end + 1);
@@ -260,12 +344,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
         }
       }
 
-      parentChildren.push(
-        createElement(
-          _getComponent(normalizedTag) || getComponent(tag) || tag,
-          props
-        )
-      );
+      parentChildren.push(createElement(component, props));
     } else if (html[++index] == '-' && html[++index] == '-') {
       end = indexOf('-->', index) + 2;
     }
@@ -276,10 +355,10 @@ const HTML2React: FC<HTML2ReactProps> = ({
   }
 
   if (start < html.length) {
-    handleTextSegment(childrenQueue[childrenQueue.length - 1], start);
+    handleTextSegment(currentNodeChildren, currentMeta, substring(start));
   }
 
-  return root.length > 1 ? root : root[0];
+  return rootNodeChildren.length > 1 ? rootNodeChildren : rootNodeChildren[0];
 };
 
 export default HTML2React;
