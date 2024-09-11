@@ -42,20 +42,30 @@ type HTML2ReactProps = {
   >;
   attributes?: Record<string, string>;
   converters?: Record<string, (value: string, tag: string) => any>;
-  processTextSegment?(segment: string, getKey: () => number): ReactNode;
+  processTextSegment?(segment: string, parentMeta: Meta): ReactNode;
+  getComponent?(
+    tag: string
+  ):
+    | ComponentType<Record<string, any>>
+    | keyof JSX.IntrinsicElements
+    | undefined;
+  shouldBeIgnored?(tag: string, props: Record<string, any>): boolean;
+  withMeta?: boolean;
 };
 
 const HTML2React: FC<HTML2ReactProps>;
 ```
 
-| Prop                  | Description                                                                                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `html`                | The HTML string to be converted into React components.                                                                                                                                     |
-| `components?`         | Custom tag components to replace HTML tags. **Keys are not case sensitive**. If a component is not provided, the corresponding HTML tag will be used.                                      |
-| `getComponent?`       | Returns a component for the given tag. If it returns `undefined`, the `tag` will be used as a component. <br/> This function will be called if the `tag` is not found in the `components`. |
-| `attributes?`         | Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is.                                                                              |
-| `converters?`         | Converters for processing attribute values. If no converter is provided, the property will be of type `string`.                                                                            |
-| `processTextSegment?` | Method to process and transform string parts of HTML content.                                                                                                                              |
+| Prop                  | Description                                                                                                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `html`                | The HTML string to be converted into React components.                                                                                                |
+| `components?`         | Custom tag components to replace HTML tags. **Keys are not case sensitive**. If a component is not provided, the corresponding HTML tag will be used. |
+| `getComponent?`       | Returns a component for the given tag if it is not found in `components`. If it returns `undefined`, the `tag` will be used as a component.           |
+| `attributes?`         | Map HTML attributes to corresponding React props. If the attribute is not specified, it will be passed as is.                                         |
+| `converters?`         | Converters for processing attribute values. If no converter is provided, the property will be of type `string`.                                       |
+| `processTextSegment?` | Method to process and transform string parts of HTML content.                                                                                         |
+| `shouldBeIgnored?`    | Determines if a tag should be ignored based on the tag name and its props.                                                                            |
+| `withMeta?`           | If `true`, adds metadata to each component in the form of a `_meta` prop, allowing for additional contextual information.                             |
 
 Example:
 

@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, JSXElementConstructor, ReactNode } from 'react';
 
 /**
  * based on [this](https://github.com/facebook/react/blob/ab31a9ed28d340172440e4b12e27d2af689249b3/packages/react-dom-bindings/src/shared/possibleStandardNames.js#L11)
@@ -362,12 +362,10 @@ export type HTML2ReactProps = {
   /**
    * Process text segments within the HTML content.
    * @param segment - The text segment to be processed.
+   * @param parentMeta - available only if {@link HTML2ReactProps.withMeta withMeta} is `true`
    * @returns The processed text segment.
    */
-  processTextSegment?(
-    segment: string,
-    getKey: () => number
-  ): Segment | Segment[];
+  processTextSegment?(segment: string, parentMeta: Meta): Segment | Segment[];
   /**
    * Returns a component for the given {@link tag}. If it returns `undefined`, the {@link tag} will be used as a component.
    *
@@ -377,4 +375,30 @@ export type HTML2ReactProps = {
    * @returns The component associated with the given {@link tag}, or `undefined` if not found.
    */
   getComponent?(tag: string): AnyComponent | undefined;
+  /**
+   * Determines if a {@link tag} should be ignored based on the tag name and its {@link props}.
+   */
+  shouldBeIgnored?(tag: string, props: Record<string, any>): boolean;
+  /**
+   * If `true`, adds metadata to each component in the form of a {@link Meta _meta} prop, allowing for additional contextual information.
+   */
+  withMeta?: boolean;
 };
+
+export type MetaChildren = Array<Meta | undefined>;
+
+export type Meta = {
+  index: number;
+  children?: MetaChildren;
+} & (
+  | {
+      type?: undefined;
+      parent?: undefined;
+    }
+  | {
+      type: String | CommonComponent | JSXElementConstructor<any>;
+      parent: Meta;
+    }
+);
+
+export type MetaProps = { _meta: Meta };
