@@ -358,7 +358,11 @@ const HTML2React: FC<HTML2ReactProps> = ({
     handleTextSegment(currentNodeChildren, currentMeta, substring(start));
   }
 
-  return rootNodeChildren.length > 1 ? rootNodeChildren : rootNodeChildren[0];
+  return rootNodeChildren.length
+    ? rootNodeChildren.length > 1
+      ? rootNodeChildren
+      : rootNodeChildren[0]
+    : null;
 };
 
 export default HTML2React;
