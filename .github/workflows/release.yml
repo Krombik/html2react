@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # required for npm trusted publishing (OIDC)
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - run: pnpm run typecheck
+
+      - run: pnpm test
+
+      # the tag is the source of truth for the published version
+      - run: |
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          PKG_VERSION=$(node -p "require('./build/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package version $PKG_VERSION"
+            exit 1
+          fi
+
+      # trusted publishing needs npm >= 11.5.1; node 22 bundles npm 10
+      - run: npm install -g npm@latest
+
+      # no token: auth via OIDC trusted publisher configured on npmjs.com;
+      # prerelease versions (1.5.0-alpha.0) go to the `alpha` dist-tag, so
+      # `latest` only ever points at stable releases
+      - run: |
+          TAG=$(node -p "require('./build/package.json').version.includes('-') ? 'alpha' : 'latest'")
+          npm publish ./build --access public --tag "$TAG"

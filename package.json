@@ -18,9 +18,11 @@
     "node": ">=10"
   },
   "scripts": {
-    "build": "tsup",
-    "watch": "tsup --watch",
-    "release": "tsup && npm publish ./build"
+    "build": "tsdown",
+    "watch": "tsdown --watch",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc",
+    "lint": "eslint src test tsdown.config.ts eslint.config.js"
   },
   "peerDependencies": {
     "@types/react": ">=16.8.0",
@@ -31,16 +33,19 @@
       "optional": true
     }
   },
-  "dependencies": {
-    "lodash.noop": "^3.0.1"
-  },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.1.0",
-    "@types/lodash.noop": "^3.0.9",
     "@types/react": "^18.3.3",
-    "prettier": "^3.3.3",
-    "tsup": "^8.2.4",
-    "typescript": "^5.5.4"
+    "@types/react-dom": "^18.3.7",
+    "eslint": "^10.10.0",
+    "prettier": "3.9.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsdown": "0.23.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "unrun": "^0.3.1"
   },
   "keywords": [
     "html",

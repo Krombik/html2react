@@ -310,11 +310,13 @@ type HTMLAttributes2ReactProps = {
 };
 
 type RemoveFunctions<T> = {
-  [K in keyof T as T[K] extends (...args: any[]) => any
-    ? never
-    : T[K] extends string
+  [
+    K in keyof T as T[K] extends (...args: any[]) => any
       ? never
-      : K]: T[K];
+      : T[K] extends string
+        ? never
+        : K
+  ]: T[K];
 };
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
@@ -396,6 +398,7 @@ export type Meta = {
       parent?: undefined;
     }
   | {
+      // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types -- part of the public api since 1.0
       type: String | CommonComponent | JSXElementConstructor<any>;
       parent: Meta;
     }

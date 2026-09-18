@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - run: pnpm run typecheck
+
+      - run: pnpm run lint --max-warnings=0
+
+      - run: pnpm exec prettier --check src test tsdown.config.ts eslint.config.js
+
+      # tests run off the TypeScript sources via node's type stripping
+      - run: pnpm test

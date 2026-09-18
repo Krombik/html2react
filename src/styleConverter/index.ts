@@ -1,24 +1,49 @@
 import type { CSSProperties } from 'react';
 
-const styleConverter = (value: string) =>
-  value.split(';').reduce<CSSProperties>((acc, item) => {
-    if (!item) {
-      return acc;
+const styleConverter = (value: string) => {
+  const style: Record<string, string> = {};
+
+  const l = value.length;
+
+  for (let i = 0; i < l;) {
+    let end = value.indexOf(';', i);
+
+    if (end < 0) {
+      end = l;
     }
 
-    const t = item.split(':');
+    const colon = value.indexOf(':', i);
 
-    const arr = t[0].trim().split('-');
+    if (colon > 0 && colon < end) {
+      let j = i;
 
-    let key = arr[0];
+      let nameEnd = colon;
 
-    for (let i = 1; i < arr.length; i++) {
-      const item = arr[i];
+      while (value.charCodeAt(j) <= 32) {
+        j++;
+      }
 
-      key += item[0].toUpperCase() + item.substring(1);
+      while (nameEnd > j && value.charCodeAt(nameEnd - 1) <= 32) {
+        nameEnd--;
+      }
+
+      let key = '';
+
+      for (; j < nameEnd; j++) {
+        const char = value[j];
+
+        key += char != '-' ? char : value[++j].toUpperCase();
+      }
+
+      if (key) {
+        style[key] = value.substring(colon + 1, end).trim();
+      }
     }
 
-    return { ...acc, [key]: (t[1] || '').trim() };
-  }, {});
+    i = end + 1;
+  }
+
+  return style as CSSProperties;
+};
 
 export default styleConverter;

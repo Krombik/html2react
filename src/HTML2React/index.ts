@@ -6,42 +6,19 @@ import type {
   MetaProps,
   Segment,
 } from '../types';
-import noop from 'lodash.noop';
 
 export { type HTML2ReactProps, type MetaProps };
 
-const NON_WHITESPACE_CHARACTER = /\S/;
+const noop = () => {};
 
-const HTML_SPECIAL_CHAR = /[\s>/]/;
+const VOID_TAGS = new Set(
+  'area base br col embed hr img input link meta param source track wbr'.split(
+    ' '
+  )
+);
 
-const HTML_ATTRIBUTE_CHAR = /[=\s>/]/;
-
-const VOID_TAGS = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'param',
-  'source',
-  'track',
-  'wbr',
-]);
-
-const _isVoidTag: (tag: string) => boolean = VOID_TAGS.has.bind(VOID_TAGS);
-
-const _handleIndex = (index: number) => {
-  if (index < 0) {
-    throw new Error('invalid html');
-  }
-
-  return index;
-};
+/** matches both `<script>` and `</script>`, `$1` is set only for the closing one */
+const SCRIPT_TAG = /<(\/?)\s*script\s*>/g;
 
 const createComponentGetter = (
   components: HTML2ReactProps['components']
@@ -51,7 +28,7 @@ const createComponentGetter = (
 
     const keys = Object.keys(components);
 
-    for (let i = keys.length; i--; ) {
+    for (let i = keys.length; i--;) {
       const key = keys[i];
 
       map.set(key.toLowerCase(), components[key]);
@@ -63,10 +40,10 @@ const createComponentGetter = (
   return noop;
 };
 
-const handleSegment = (
+const appendSegment = (
   segment: Segment,
   nodesChildren: NodeChildren[],
-  parentMeta: Meta | false | undefined
+  parentMeta: Meta | undefined
 ) => {
   if ((segment && segment !== true) || segment === 0) {
     const typeofSegment = typeof segment;
@@ -101,6 +78,56 @@ const handleSegment = (
 
 type NodeChildren = JSX.Element | string;
 
+const skipSpaces = (html: string, i: number) => {
+  while (html.charCodeAt(i) <= 32) {
+    i++;
+  }
+
+  return i;
+};
+
+/** stops on whitespace, `>` or `/` */
+const findEnd = (html: string, i: number) => {
+  let c: number;
+
+  while (((c = html.charCodeAt(i)), c > 32 && c != 62 && c != 47)) {
+    i++;
+  }
+
+  return i;
+};
+
+const appendProcessedText = (
+  nodesChildren: NodeChildren[],
+  text: string,
+  parentMeta: Meta | undefined,
+  processTextSegment: (segment: string, parentMeta: Meta) => Segment | Segment[]
+) => {
+  const segment = processTextSegment(text, parentMeta as Meta);
+
+  if (Array.isArray(segment)) {
+    for (let i = 0; i < segment.length; i++) {
+      appendSegment(segment[i], nodesChildren, parentMeta);
+    }
+  } else {
+    appendSegment(segment, nodesChildren, parentMeta);
+  }
+};
+
+const appendText = (nodesChildren: NodeChildren[], text: string) => {
+  nodesChildren.push(text);
+};
+
+const appendTextWithMeta = (
+  nodesChildren: NodeChildren[],
+  text: string,
+  parentMeta: Meta
+) => {
+  nodesChildren.push(text);
+
+  parentMeta.children!.length++;
+};
+
 const HTML2React: FC<HTML2ReactProps> = ({
   html,
   components,
@@ -115,7 +142,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
   let currentNodeChildren: NodeChildren[] = [];
 
-  let currentMeta = withMeta && ({ index: 0, children: [] } as Meta);
+  let currentMeta = withMeta ? ({ index: 0, children: [] } as Meta) : undefined;
 
   const _getComponent = createComponentGetter(components);
 
@@ -127,45 +154,27 @@ const HTML2React: FC<HTML2ReactProps> = ({
 
   const nodesChildrenQueue = [rootNodeChildren];
 
-  const substring: String['substring'] = html.substring.bind(html);
-
-  const _indexOf: String['indexOf'] = html.indexOf.bind(html);
-
-  const search = (index: number, regexp: RegExp) =>
-    index + _handleIndex(substring(index).search(regexp));
-
-  const indexOf = (item: string, index: number) =>
-    _handleIndex(_indexOf(item, index));
-
-  const handleTextSegment: (
+  const handleTextSegment = (
+    processTextSegment
+      ? appendProcessedText
+      : withMeta
+        ? appendTextWithMeta
+        : appendText
+  ) as (
     nodesChildren: NodeChildren[],
-    parentMeta: Meta | false | undefined,
-    text: string
-  ) => void = processTextSegment
-    ? (nodesChildren, parentMeta, text) => {
-        const segment = processTextSegment(text, parentMeta as Meta);
-
-        if (Array.isArray(segment)) {
-          for (let i = 0; i < segment.length; i++) {
-            handleSegment(segment[i], nodesChildren, parentMeta);
-          }
-        } else {
-          handleSegment(segment, nodesChildren, parentMeta);
-        }
-      }
-    : (nodesChildren, parentMeta, text) => {
-        nodesChildren.push(text);
-
-        if (parentMeta) {
-          parentMeta.children!.length++;
-        }
-      };
+    text: string,
+    parentMeta?: Meta,
+    processTextSegment?: (
+      segment: string,
+      parentMeta: Meta
+    ) => Segment | Segment[]
+  ) => void;
 
   for (
-    let index = _indexOf('<'),
-      char: string,
+    let index = html.indexOf('<'),
+      charCode: number,
       end: number,
-      _next: number,
+      next: number,
       tag: string,
       normalizedTag: string,
       attribute: string,
@@ -179,44 +188,52 @@ const HTML2React: FC<HTML2ReactProps> = ({
     index != -1;
     parentChildren = currentNodeChildren
   ) {
-    end = _indexOf('>', index + 1);
+    charCode = html.charCodeAt(index + 1);
 
-    if (end > 0) {
-      while (true) {
-        _next = _indexOf('<', index + 1);
+    // only `<` followed by a letter, `/` or `!` opens a tag, everything else is text
+    if (((charCode | 32) - 97) >>> 0 > 25 && charCode != 47 && charCode != 33) {
+      index = html.indexOf('<', index + 1);
 
-        if (_next > 0 && _next < end) {
-          index = _next;
-        } else {
-          break;
-        }
-      }
-    } else {
+      continue;
+    }
+
+    end = html.indexOf('>', index + 1);
+
+    if (end < 0) {
       break;
     }
 
     if (start != index) {
       handleTextSegment(
         currentNodeChildren,
+        html.substring(start, index),
         currentMeta,
-        substring(start, index)
+        processTextSegment
       );
     }
 
-    char = html[++index];
+    index++;
 
-    if (char == '/') {
-      tag = substring(index + 1, end).trim();
+    if (charCode == 47) {
+      for (let j = tagsQueue.length; j--;) {
+        tag = tagsQueue[j];
 
-      for (let j = tagsQueue.length; j--; ) {
-        if (tagsQueue[j] == tag) {
-          metaQueue.length = nodesChildrenQueue.length = j + 1;
+        if (
+          html.startsWith(tag, index + 1) &&
+          ((charCode = html.charCodeAt(index + 1 + tag.length)) <= 32 ||
+            charCode == 62)
+        ) {
+          nodesChildrenQueue.length = j + 1;
 
           tagsQueue.length = j;
 
           currentNodeChildren = nodesChildrenQueue[j];
 
-          currentMeta = metaQueue[j];
+          if (currentMeta) {
+            metaQueue.length = j + 1;
+
+            currentMeta = metaQueue[j];
+          }
 
           if (
             shouldBeIgnored &&
@@ -239,11 +256,8 @@ const HTML2React: FC<HTML2ReactProps> = ({
           break;
         }
       }
-    } else if (char != '!') {
-      tag = substring(
-        index,
-        (index = search(index + 1, HTML_SPECIAL_CHAR))
-      ).trim();
+    } else if (charCode != 33) {
+      tag = html.substring(index, (index = findEnd(html, index + 1)));
 
       normalizedTag = tag.toLowerCase();
 
@@ -267,36 +281,45 @@ const HTML2React: FC<HTML2ReactProps> = ({
         }
       }
 
-      index = search(index, NON_WHITESPACE_CHARACTER);
+      index = skipSpaces(html, index);
 
-      while (end != index && html[index] != '/') {
-        attribute = substring(
-          index,
-          (index = search(index + 1, HTML_ATTRIBUTE_CHAR))
-        ).trim();
+      while (index != end && html.charCodeAt(index) != 47) {
+        next = index + 1;
+
+        // inlined `findEnd`, stopping on `=` as well
+        while (
+          ((charCode = html.charCodeAt(next)),
+          charCode > 32 && charCode != 62 && charCode != 47 && charCode != 61)
+        ) {
+          next++;
+        }
+
+        attribute = html.substring(index, (index = next));
 
         if (attribute in attributes) {
           attribute = attributes[attribute];
         }
 
-        char = html[index];
-
-        if (char != '=' && char != '/' && char != '>') {
-          index = search(index + 1, NON_WHITESPACE_CHARACTER);
+        if (charCode <= 32) {
+          charCode = html.charCodeAt((index = skipSpaces(html, index + 1)));
         }
 
-        if (html[index] == '=') {
-          char = html[(index = search(index + 1, NON_WHITESPACE_CHARACTER))];
+        if (charCode == 61) {
+          charCode = html.charCodeAt((index = skipSpaces(html, index + 1)));
 
-          const isWrapped = char == "'" || char == '"';
+          if (charCode == 39 || charCode == 34) {
+            next = html.indexOf(html[index], ++index);
 
-          const next = isWrapped
-            ? indexOf(char, ++index)
-            : search(index + 1, HTML_SPECIAL_CHAR);
+            value = html.substring(index, next++);
 
-          value = substring(index, next);
+            if (next > end) {
+              end = html.indexOf('>', next);
+            }
+          } else {
+            value = html.substring(index, (next = findEnd(html, index + 1)));
+          }
 
-          index = search(next + (isWrapped as any), NON_WHITESPACE_CHARACTER);
+          index = skipSpaces(html, next);
         } else {
           value = 'true';
         }
@@ -306,7 +329,7 @@ const HTML2React: FC<HTML2ReactProps> = ({
       }
 
       if (normalizedTag != 'script') {
-        if (!_isVoidTag(normalizedTag)) {
+        if (!VOID_TAGS.has(normalizedTag)) {
           tagsQueue.push(tag);
 
           nodesChildrenQueue.push((currentNodeChildren = props.children = []));
@@ -318,44 +341,42 @@ const HTML2React: FC<HTML2ReactProps> = ({
           }
         }
       } else {
-        const str = substring(end + 1);
+        SCRIPT_TAG.lastIndex = end + 1;
 
-        const scriptClosingTag = /<\/\s*script\s*>/.exec(str);
+        const scriptTag = SCRIPT_TAG.exec(html);
 
-        if (scriptClosingTag) {
-          const indexOfNextScriptOpenTag = str.search(/<\s*script\s*>/);
+        if (scriptTag && scriptTag[1]) {
+          const code = html.substring(end + 1, scriptTag.index);
 
-          const indexOfScriptClosingTag = scriptClosingTag.index;
-
-          if (
-            indexOfNextScriptOpenTag == -1 ||
-            indexOfScriptClosingTag < indexOfNextScriptOpenTag
-          ) {
-            const code = str.substring(0, indexOfScriptClosingTag);
-
-            if (code) {
-              (
-                props as JSX.IntrinsicElements['script']
-              ).dangerouslySetInnerHTML = { __html: code };
-            }
-
-            end += indexOfScriptClosingTag + scriptClosingTag[0].length;
+          if (code) {
+            (props as JSX.IntrinsicElements['script']).dangerouslySetInnerHTML =
+              { __html: code };
           }
+
+          end = scriptTag.index + scriptTag[0].length - 1;
         }
       }
 
       parentChildren.push(createElement(component, props));
-    } else if (html[++index] == '-' && html[++index] == '-') {
-      end = indexOf('-->', index) + 2;
+    } else if (
+      html.charCodeAt(++index) == 45 &&
+      html.charCodeAt(++index) == 45
+    ) {
+      end = html.indexOf('-->', index) + 2;
     }
 
     start = end + 1;
 
-    index = _next;
+    index = html.indexOf('<', start);
   }
 
   if (start < html.length) {
-    handleTextSegment(currentNodeChildren, currentMeta, substring(start));
+    handleTextSegment(
+      currentNodeChildren,
+      html.substring(start),
+      currentMeta,
+      processTextSegment
+    );
   }
 
   return rootNodeChildren.length

@@ -1,13 +1,12 @@
 {
   "compilerOptions": {
-    "outDir": "build",
     "module": "esnext",
-    "target": "es6",
+    "target": "es2020",
     "lib": ["dom", "esnext"],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "jsx": "react",
-    "sourceMap": true,
-    "declaration": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "noImplicitReturns": false,
     "noImplicitThis": true,
@@ -20,6 +19,6 @@
     "stripInternal": true,
     "types": ["node"]
   },
-  "include": ["src", "tsup.config.ts"],
+  "include": ["src", "test", "tsdown.config.ts"],
   "exclude": ["node_modules", "build", "example"]
 }
